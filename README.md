@@ -537,7 +537,7 @@ There is also some miscellaneous (and luckily easy to calculate) information tha
 
 1. `IS_RL_223`: `true` if the value of the `BuildVersion` header property is >= `221120.42953.406184`, else `false`.
 2. `IS_LAN`: `true` if the value of the `MatchType` header property is `Lan`, else `false`.
-3. `PARSE_ACTOR_NAME_ID`: `true` if (`ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `20`) OR (`ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `14` AND `IS_LAN` is `true`), else `false`.
+3. `PARSE_ACTOR_NAME_ID`: `true` if (`ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `20`) OR (`ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `14` AND `IS_LAN` is `false`), else `false`.
 4. `ACTOR_ID_SIZE`: The bit length of the value of the `MaxChannels` header property.
 5. `ACTOR_ID_MAX`: The value of the `MaxChannels` header property.
 
