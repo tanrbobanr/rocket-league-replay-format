@@ -481,6 +481,8 @@ In order to get our class net cache to a usable state, we need each entry to inh
 This is pretty confusing, so here is a simple Python implementation that does the above on a raw class net cache formatted similarly to the example given at the beginning of this section:
 
 ```py
+# Our raw class net cache, formatted identically to
+# the example given at the beginning of this section
 RawCNC: List[ Dict[ str, Union[ int, List[ Dict[ str, int ] ] ] ] ] = ...
 
 # A hash -> ObjectID:ObjectName
