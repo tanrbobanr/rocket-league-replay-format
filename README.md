@@ -485,8 +485,8 @@ There is also some miscellaneous (and luckily easy to calculate) information tha
 1. `IS_RL_223`: `true` if the `BuildVersion` property is present in the header properties AND its value >= `221120.42953.406184`, else `false`.
 2. `IS_LAN`: `true` if the value of the `MatchType` header property is `Lan`, else `false`.
 3. `PARSE_ACTOR_NAME_ID`: `true` if (`ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `20`) OR (`ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `14` AND `IS_LAN` is `false`), else `false`.
-4. `ACTOR_ID_SIZE`: The bit length of the value of the `MaxChannels` header property.
-5. `ACTOR_ID_MAX`: The value of the `MaxChannels` header property.
+4. `ACTOR_ID_MAX`: The value of the `MaxChannels` header property. If not present, then use `1023`.
+5. `ACTOR_ID_SIZE`: One less than the bit length of `ACTOR_ID_MAX`, or 0; whichever is larger.
 
 Something else we will need is an empty hash (which we will call `ACTIVE_ACTORS`) that will be dynamically updated as new actors get added and removed (a process which will be covered in detail in the next section). This will be an `ActorID:ObjectID` hash.
 
@@ -506,7 +506,7 @@ Finally, its time to start deserializing the network stream. The network stream 
 - Else:
     - End of frame.
 
-Each frame should include a list of new, updated, and deleted actors that will be dynamically filled your program proceeds through deserialization of a given frame.
+Each frame should include a list of new, updated, and deleted actors that will be dynamically filled as your program proceeds through the deserialization process.
 
 ## Deserializing a New Actor
 
@@ -1052,6 +1052,6 @@ Below is a list of all currently unknown portions of the replay file.
 
 I would like to thank [Nick Babcock](https://github.com/nickbabcock) for their direct help during my journey of learning the Rocket League replay format. [Check out their Rocket League replay parser here](https://github.com/nickbabcock/boxcars).
 
-The [`Object:SpawnTrajectory`](#objectspawntrajectory), [`Object:AttributeType`](#objectattributetype), and [`Class:ParentClass`](#classparentclass) hash maps came from [boxcars](https://github.com/nickbabcock/boxcars), specifically the [data file](https://github.com/nickbabcock/boxcars/blob/master/src/data.rs).
+The [`Object:SpawnTrajectory`](#objectspawntrajectory), [`Object:AttributeType`](#objectattributetype), and [`Class:ParentClass`](#classparentclass) hash maps came from [boxcars](https://github.com/nickbabcock/boxcars), specifically the [data file](https://github.com/nickbabcock/boxcars/blob/master/src/data.rs). The [`Class:ParentClass`](#classparentclass) hash map is slightly modified.
 
 The [`Object:Parent`](#objectparent) hash map is a slightly modified version of [this portion of the `ActorState` file](https://github.com/jjbott/RocketLeagueReplayParser/blob/9daa4e0491b3a48c9267eeeb93d065ae1b0f35a9/RocketLeagueReplayParser/NetworkStream/ActorState.cs#L46-L183) from [RocketLeagueReplayParser](https://github.com/jjbott/RocketLeagueReplayParser).
