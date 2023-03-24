@@ -147,7 +147,7 @@ The below core types are simply aliases of other core types and are used to diff
         - NameProperty :: Deserialize `String16`.
         - FloatProperty :: Read `f32`.
         - ArrayProperty :: Deserialize `List[PropertySet]`.
-        - ByteProperty :: Deserialize two `String8`s (the *key* and *value*).
+        - ByteProperty :: A key-value pair. Deserialize one `String8` (the *key*). If the *key* is either `OnlinePlatform_Steam` or `OnlinePlatform_PS4`, the *value* is `null`. Otherwise, deserialize another `String8` (the *value*).
         - QWordProperty :: Read `u64`.
         - BoolProperty :: Read `bb`.
 - `KeyFrame`:
@@ -492,7 +492,7 @@ Something else we will need is an empty hash (which we will call `ACTIVE_ACTORS`
 
 # Replay Deserialization - Network Stream
 
-Finally, its time to start deserializing the network stream. The network stream is formatted as a list of frames, the length of which is hinted at in the `NumFrames` header property. Each frame starts with two 32-bit floating point numbers - the absolute time (in seconds) and the number of seconds since the previous frame, respectively. Next comes the actor section. This section consists of zero or more actor segments, each of which can perform one of three tasks - create a new actor, update an existing actor, or delete an actor. This process is actually quite simple:
+Finally, its time to start deserializing the network stream. The network stream is formatted as a list of frames, the length of which is hinted at in the `NumFrames` header property. If the `NumFrames` header property is not present, then no frames should be deserialized. Each frame starts with two 32-bit floating point numbers - the absolute time (in seconds) and the number of seconds since the previous frame, respectively. Next comes the actor section. This section consists of zero or more actor segments, each of which can perform one of three tasks - create a new actor, update an existing actor, or delete an actor. This process is actually quite simple:
 
 - While `bb` == `true`:
     - `actor_id` = `bmc[C, M] as ActorID` where `C` is `ACTOR_ID_SIZE` and `M` is `ACTOR_ID_MAX`, both of which were prepared beforehand (see [`Preparation of Miscellaneous Information`](#preparation-of-miscellaneous-information)).
