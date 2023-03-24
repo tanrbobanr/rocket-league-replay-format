@@ -461,22 +461,145 @@ Here is the example class net cache we will be working with:
 ]
 ```
 
-This is just an example - your class net cache will be much, much larger. Each entry is made up of an `object_id`, which points to that entry's parent class object in the `Objects` list (from the footer). The `cache_id` is a (not-so-) unique id that identifies a given entry for inter-entry relationships. The `parent_id` points to the `cache_id` of its parent class net cache entry. Finally, there are the `properties`, which is a list of `StreamID:ObjectID` pairs. We will need these in order to know how many bits to read when accumulating attributes for an updated actor, as well as being able to decode the recently read stream ID into the correct object ID, and eventually into the corresponding attribute type. But first, lets make some changes to the class net cache, as in its raw state, it is actually quite condensed and can often contain numerous hierarchical errors.
+This is just an example - your class net cache will be much, much larger. Each entry is made up of an `object_id`, which points to that entry's parent class object in the `Objects` list (from the footer). The `cache_id` is a (not-so-) unique id that identifies a given entry for inter-entry relationships. The `parent_id` points to the `cache_id` of its parent class net cache entry. Finally, there are the `properties`, which is a list of hashes that each contain a `StreamID` and an `ObjectID`. We will need these in order to know how many bits to read when accumulating attributes for an updated actor, as well as being able to decode the recently read stream ID into the correct object ID, and eventually into the corresponding attribute type. But first, lets make some changes to the class net cache, as in its raw state, it is actually quite condensed and can often contain numerous hierarchical errors.
 
 In order to get our class net cache to a usable state, we need each entry to inherit the properties of its parent entry (which may also have a parent, so this needs to be done iteratively), as well as check for incorrect `parent_id`s along the way. Something very important to note is that the `parent_id` **only** refers to the **closest** entry that appeared **before** the working entry. This is why multiple entries can have the same `cache_id` without causing issues. This process will look something like the following:
 
 1. Create an empty class net cache for us to add updated entries to.
 2. Iterate through all the class net cache entries.
-3. For each entry in the original class net cache:
-    1. Copy the properties into a new (temporary) list.
-    2. Get the class object name from `Classes` given the entry's `object_id` (i.e. get the `class` from the item in `Classes` whose `index` value corresponds to `object_id`).
-    3. If the class object name is present in the [`Class:ParentClass`](#classparentclass) hash:
+3. For each entry in the original class net cache (we'll call this the **working entry**):
+    1. Copy the properties from the working entry into a new (temporary) list.
+    2. Get the class name from `Classes` given the working entry's `object_id` (i.e. get the `class` from the item in `Classes` whose `index` value corresponds to `object_id`). The reason we need to pull from `Classes` rather than `Objects` is because, in some cases, an object will have the same name in `Objects`, but different names in `Classes`. For example, `TAGame.GameEvent_SoccarPrivate_TA` will have the name `TAGame.GameEvent_Soccar_TA` in the `Objects` list, which will cause issues with inheritance.
+    3. If the object name is present in the [`Class:ParentClass`](#classparentclass) hash:
         1. Plug the class object name into the hash map to get the parent class name.
-        2. Get the `ObjectID` of the class object name from `Objects`.
-        3. Iterate over our updated class net cache in reverse order until an entry with an `object_id` that matches the one from `3.3.2` is found. If found, add the entry's properties to our temporary properties list and break from the loop.
-    4. If the class object name is *not* present in the hash, or if no parent entry was found in the iteration process explained in `3.3.3`:
+        2. Get the `ObjectID` of the parent class name from `Objects`. We'll call this the **parent class ID**
+        3. Iterate over our updated class net cache in reverse order until an entry is found whose `object_id` matches the parent class ID that we found just earlier. If found, add the entry's properties to our temporary properties list and break from the loop.
+    4. If the class object name is *not* present in the hash, *OR* if no parent entry was found in the iteration process explained above:
         1. Iterate over our updated class net cache in reverse order until an entry with a `cache_id` is found that matches the working entry's `parent_id`. If found, add the entry's properties to our temporary properties list and break from the loop.
     5. Add a copy of the working entry into our updated class net cache, but replace its properties with our temporary properties list.
+
+This is pretty confusing, so here is a simple Python implementation that does the above on a raw class net cache formatted similarly to the example given at the beginning of this section:
+
+```py
+RawCNC: List[ Dict[ str, Union[ int, List[ Dict[ str, int ] ] ] ] ] = ...
+
+# A hash -> ObjectID:ObjectName
+Objects: Dict[ int, str ] = ...
+
+# A hash -> ObjectName:ObjectID
+ObjectsByName: Dict[ str, int ] = ...
+
+# A hash -> ClassID:ClassName
+Classes: Dict[ int, str ] = ...
+
+# A hash -> ClassName:ParentClassName
+Class_ParentClass: Dict[ str, str ] = ...
+
+# Where we will be placing our updated class net cache entries
+UpdatedCNC: List[ Dict[ str, Union[ int, List[ Dict[ str, int ] ] ] ] ] = dict()
+
+# Iterate over each entry in our raw class net cache
+for WORKING_ENTRY in RawCNC:
+    Properties: List[ Dict[ str, int ] ] = WORKING_ENTRY.get( "properties" )
+
+    # Get the class name from classes
+    ObjectID = WORKING_ENTRY.get( "object_id" )
+    ClassName = Classes.get( ObjectID )
+
+    # A flag to track whether or not we found a parent entry in the first pass
+    global ParentFound
+    ParentFound = False
+
+    # If ClassName is present in Class_ParentClass, then we use the that as the parent
+    if ClassName in Class_ParentClass:
+        ParentClassName = Class_ParentClass.get( ClassName )
+        ParentClassID = ObjectsByName.get( ParentClassName )
+
+        # Iterate over our updated class net cache in reverse to (hopefully)
+        # find an entry whose object_id matches that of ParentClassID
+        for UPDATED_ENTRY in reversed(UpdatedCNC):
+            if UPDATED_ENTRY.get( "object_id" ) == ParentClassID:
+                # Update the Properties list
+                ParentProperties = UPDATED_ENTRY.get( "properties" )
+                Properties.extend( ParentProperties )
+
+                # Set the flag to True so that we don't enter the second pass
+                ParentFound = True
+
+                # Break out of the loop
+                break
+    
+    # If no parent was found (i.e. the ClassName was not present in
+    # Class_ParentClass OR no parent entry was found in our UpdatedCNC), we
+    # then use the predefined parent_id to find an entry with a matching cache_id
+    if not ParentFound:
+        # Iterate over our updated class net cache in reverse to (hopefully)
+        # find an entry whose class_id matches the WORKING_ENTRY's parent_id
+        ParentCacheID = WORKING_ENTRY.get( "parent_id" )
+        for UPDATED_ENTRY in reversed(UpdatedCNC):
+            if UPDATED_ENTRY.get( "cache_id" ) == ParentCacheID:
+                # Update the Properties list
+                ParentProperties = UPDATED_ENTRY.get( "properties" )
+                Properties.extend( ParentProperties )
+
+                # Break out of the loop
+                break
+    
+    # Add the working entry with new properties to our updated class net cache
+    NEW_ENTRY = {
+        "object_id": WORKING_ENTRY.get( "object_id" ),
+        "parent_id": WORKING_ENTRY.get ("parent_id" ),
+        "cache_id": WORKING_ENTRY.get( "cache_id" ),
+        "properties": Properties,
+    }
+    UpdatedCNC.append( NEW_ENTRY )
+```
+
+> **Additional precalculations**: There are some additional precalculations that can be done to help increase performance, which are mentioned in [`Deserializing an Updated Actor`](#deserializing-an-updated-actor). Here is an example Python implementation using the previous Python example's `UpdatedCNC`:
+> ```py
+> # A hash -> ObjectID:AttributeType
+> AttributeTypes: Dict[ int, str ] = ...
+> 
+> # Precalculated cache information that will be derived from our updated class net
+> # cache. Formatted as a hash of ObjectID (the entry's object_id) to another hash
+> # containing the maximum stream ID, number of bits to read, and finally a
+> # hash of each of the entry properties' stream_id to the corresponding attribute
+> # type
+> Attributes: Dict[ int, Dict[ str, Union[ int, Dict[ int, int ] ] ] ] = dict()
+> 
+> for UPDATED_ENTRY in UpdatedCNC:
+>     Properties = UPDATED_ENTRY.get( "properties" )
+> 
+>     # Find the maximum stream ID
+>     if Properties: # is not empty
+>         MaxStreamID = max( Property.get( "stream_id" ) for Property in Properties ) + 1
+>     else: # Properties is empty
+>         MaxStreamID = 3
+>     
+>     # Find the stream ID size
+>     StreamIDSize = MaxStreamID.bit_length() - 1
+> 
+>     # Format the hash of StreamID:ObjectID
+>     StreamID_AttributeType: Dict[ int, str ] = dict()
+>     for Property in Properties:
+>         StreamID = Property.get( "stream_id" )
+>         ObjectID = Property.get( "object_id" )
+>         ObjectName = Objects.get( ObjectID )
+>         AttributeType = AttributeTypes.get( ObjectName )
+>         StreamID_AttributeType[ StreamID ] = AttributeType
+> 
+> 
+>     # Add a new entry into Attributes
+>     NEW_ENTRY = {
+>         "max_stream_id": MaxStreamID,
+>         "stream_id_size": StreamIDSize,
+>         "attributes": StreamID_AttributeType,
+>     }
+>     Attributes[ UPDATED_ENTRY.get( "object_id" ) ] = NEW_ENTRY
+> ```
+
+
+> **Notes on efficiency**: Interacting with JSON can in some cases be taxing. Make sure all of the data you are interacting with is formatted in a way that makes access to the required data efficient. For example, `Classes` should be transformed into a hash of each item's `index` value to its `class` value. In some cases, these can be formatted at read-time instead of as a post-read process, which may also increase performance.
 
 ## Preparation of Miscellaneous Information
 
