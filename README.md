@@ -69,7 +69,7 @@ Core data types.
 - `f32` > A 32-bit float.
 - `b` > An 8-bit boolean.
 - `bb` > A 1-bit boolean.
-- `str` > A string. Not to be confused with `String` in [Basic Data Structures](#basic-data-structures) below.
+- `str` > A string. Not to be confused with `String8`/`String16` in [Basic Data Structures](#basic-data-structures) below.
 - `sqrt[N]` > The square root of `N`.
 - `A^B` > `A` raised to the power of `B`.
 - `A as B` > Value `A` as a type `B`.
@@ -91,14 +91,13 @@ The below core types are simply aliases of other core types and are used to diff
 - `CacheID<int>` > An integer (signed or unsigned) representing a class net cache's cache ID.
 
 ## Basic Data Structures
-- `String`:
-    - *length* :: Read `i32`. If 0, return an empty string. If not, and if the value is negative, multiply by -2.
-    - **value** :: Read `bytes[<length>]`; drop the last character (or two if *length* was negative), then decode with the `utf-8` encoding (or `windows-1252` if *length* was negative).
-    <blockquote>
-    
-    <strong>Notes</strong>: Replay <code>6688</code> had what appears to have been a bug where one of the <em>length</em> values would be <code>83886080</code> when the actual length should be <code>8</code>. If this value is encountered, it should be replaced with the correct value.
-
-    </blockquote>
+- `String8`:
+    - *length* :: Read `i32`.
+    - **value** :: Read `bytes[<length>]`, drop the last byte (a null terminator), then decode with the `UTF-8` text encoding.
+    > **Note**: Replay `6688` had what appears to have been a bug where one of the *length* values would be `83886080` when the actual length should have been `8`. If this value is encountered, it should be replaced with the correct value.
+- `String16`:
+    - *length* :: Read `i32`. If 0, return an empty string.
+    - **value** :: If *length* is negative, multiply it by `-2`, then decode with the `UTF-16` text encoding. Otherwise, decode with the `Windows-1252` text encoding.
 - `List[T, n=32, d=[]]`:
     - *length* :: Read \<n\> bits from the stream.
     - **values** :: If *length* is `0`, return \<d\>. Otherwise, Read \<length\> instances of `T`.
@@ -139,16 +138,16 @@ The below core types are simply aliases of other core types and are used to diff
 - `PropertySet`:
     - **value** :: Read any number of `Property` instances until a termination is signaled.
 - `Property`:
-    - **property_name** :: Deserialize `String`; if result is "None", then exit early by returning nothing (or some other unique type that wont get mixed up with real values), indicating a termination.
-    - **property_type** :: Deserialize `String`.
+    - **property_name** :: Deserialize `String8`; if result is "None", then exit early by returning nothing (or some other unique type that wont get mixed up with real values), indicating a termination.
+    - **property_type** :: Deserialize `String8`.
     - **unknown_01** :: Read `u64`; does not seem to contain any useful data, and what it represents is debated.
     - **value** :: The following behavior differs depending on the **property_type**:
         - IntProperty :: Read `i32`.
-        - StrProperty :: Deserialize `String`.
-        - NameProperty :: Deserialize `String`.
+        - StrProperty :: Deserialize `String16`.
+        - NameProperty :: Deserialize `String16`.
         - FloatProperty :: Read `f32`.
         - ArrayProperty :: Deserialize `List[PropertySet]`.
-        - ByteProperty :: Deserialize two `String`s (the *key* and *value*).
+        - ByteProperty :: Deserialize two `String8`s (the *key* and *value*).
         - QWordProperty :: Read `u64`.
         - BoolProperty :: Read `bb`.
 - `KeyFrame`:
@@ -157,13 +156,13 @@ The below core types are simply aliases of other core types and are used to diff
     - **file_position** :: Read `u32`.
 - `DebugString`:
     - **frame** :: Read `u32`.
-    - **username** :: Deserialize `String`.
-    - **text** :: Deserialize `String`.
+    - **username** :: Deserialize `String16`.
+    - **text** :: Deserialize `String16`.
 - `TickMark`:
-    - **description** :: Deserialize `String`.
+    - **description** :: Deserialize `String16`.
     - **frame** :: Read `u32`.
 - `Class`:
-    - **class** :: Deserialize `String`.
+    - **class** :: Deserialize `String8`.
     - **index** :: Read `u32`.
 - `ClassNetCacheProperty`:
     - **object_id** :: Read `u32`.
@@ -252,9 +251,9 @@ All 40 attributes and how to deserialize them. Below you will see more than the 
     - **goal_explosion** :: Read `u32` if **version** >= `16`, else `null`.
     - **banner** :: Read `u32` if **version** >= `17`, else `null`.
     - **product_id** :: Read `u32` if **version** >= `19`, else `null`.
-    - **unknown_06** :: Read `u32` if **version** >= `16`, else `null`.
-    - **unknown_07** :: Read `u32` if **version** >= `16`, else `null`.
-    - **unknown_08** :: Read `u32` if **version** >= `16`, else `null`.
+    - **unknown_06** :: Read `u32` if **version** >= `22`, else `null`.
+    - **unknown_07** :: Read `u32` if **version** >= `22`, else `null`.
+    - **unknown_08** :: Read `u32` if **version** >= `22`, else `null`.
 - `Product`:
     - **unknown_09** :: Read `bb`.
     - **object_id** :: Read `u32`.
@@ -263,7 +262,7 @@ All 40 attributes and how to deserialize them. Below you will see more than the 
         - `TAGame.ProductAttribute_Painted_TA` :: If `ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `18`, read `bits[31]` (**type**="NewPaint"), else read `bmc[3, 14]` (**type**="OldPaint").
         - `TAGame.ProductAttribute_SpecialEdition_TA` :: Read `bits[31]` (**type**="SpecialEdition").
         - `TAGame.ProductAttribute_TeamEdition_TA` :: If `ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `18`, read `bits[31]` (**type**="NewTeamEdition"), else read `bmc[3, 14]` (**type**="OldTeamEdition").
-        - `TAGame.ProductAttribute_TitleID_TA` :: Deserialize `String` (**type**="Title").
+        - `TAGame.ProductAttribute_TitleID_TA` :: Deserialize `String16` (**type**="Title").
         - If the object did not match any of the above, return `null` (**type**="Absent").
 - `LoadoutOnlineAttr`:
     - **values** :: Read `List[ List[ Product, n=8, d=null ], n=8, d=null ]`
@@ -294,28 +293,28 @@ All 40 attributes and how to deserialize them. Below you will see more than the 
     - **picked_up** :: Read `u8`.
 - `PlayerHistoryKey` > Read `bits[14] as ByteAttr`.
 - `PrivateMatchSettingsAttr`:
-    - **mutators** :: Deserialize `String`.
+    - **mutators** :: Deserialize `String16`.
     - **joinable_by** :: Read `u32`.
     - **max_players** :: Read `u32`.
-    - **game_name** :: Deserialize `String`.
-    - **password** :: Deserialize `String`.
+    - **game_name** :: Deserialize `String16`.
+    - **password** :: Deserialize `String16`.
     - **flag** :: Read `bb`.
-- `QWordStringAttr` > Deserialize `String` if `IS_RL_223` is `true`, else read `u64`.
+- `QWordStringAttr` > Deserialize `String16` if `IS_RL_223` is `true`, else read `u64`.
 - `RepStatTitleAttr`:
     - **unknown_14** :: Read `bb`.
-    - **name** :: Deserialize `String`.
+    - **name** :: Deserialize `String16`.
     - **unknown_15** :: Read `bb`.
     - **index** :: Read `u32`.
     - **value** :: Read `u32`.
 - `ReservationAttr`:
     - **number** :: Read `bits[3]`.
     - **unique_id** :: Read `UniqueIDAttr`.
-    - **name** :: `null` if the *system_id* of `UniqueIDAttr` is `0`, else deserialize `String`.
+    - **name** :: `null` if the *system_id* of `UniqueIDAttr` is `0`, else deserialize `String16`.
     - **unknown_16** :: Read `bb`.
     - **unknown_17** :: Read `bb`.
     - **unknown_18** :: Read `bits[6]` if `ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `12`, else `null`.
 - `RemoteID.Epic`:
-    - **online_id** :: Deserialize `String`.
+    - **online_id** :: Deserialize `String16`.
 - `RemoteID.PlayStation`:
     - **name** :: Read `bytes[16]`, filter out any `null` bytes (`0x00`), then decode with the `Windows-1252` character encoding.
     - **unknown_19** :: Read `bytes[16]` if `NET_VERSION` >= `1`, else read `bytes[8]`.
@@ -344,7 +343,7 @@ All 40 attributes and how to deserialize them. Below you will see more than the 
 - `StatEventAttr`:
     - **unknown_22** :: Read `bb`.
     - **object_id** :: Read `i32 as ObjectID`.
-- `StringAttr` > Deserialize `String`.
+- `StringAttr` > Deserialize `String16`.
 - `TeamLoadoutAttr`:
     - **blue** :: Deserialize `Loadout`.
     - **orange** :: Deserialize `Loadout`.
@@ -399,14 +398,14 @@ Now, lets look at each section in detail. Note that these sections should be rea
 3. `u32` EngineVersion :: The engine version. This is the `ENGINE_VERSION` variable mentioned in [Types and Structures](#types-and-structures).
 4. `u32` LicenseeVersion :: The licensee version. This is the `LICENSEE_VERSION` variable mentioned in [Types and Structures](#types-and-structures).
 5. `u32` NetVersion :: The net version. ONLY present if `ENGINE_VERSION` >= `866` and `LICENSEE_VERSION` >= `18`. This is the `NET_VERSION` variable mentioned in [Types and Structures](#types-and-structures), and is usually set to `0` if not present in the replay in order to make comparisons easier.
-6. `String` VersionID :: The version ID.
+6. `String16` VersionID :: The version ID.
 7. `PropertySet` HeaderProperties :: Basic game info.
 
 ## Deserializing the Body
 
 1. `u32` BodyLength :: The length of the body + footer.
 2. `u32` BodyCRC :: The cyclic redundancy check for the body + footer.
-3. `List[String]` Levels :: A list of `String`s detailing SFX packages.
+3. `List[String16]` Levels :: A list of `String16`s detailing SFX packages.
 4. `List[KeyFrame]` KeyFrames :: Keyframes in the replay.
 5. `u32` NetworkStreamLength :: The length (in bytes) of the body (network stream).
 6. `bytes[<NetworkStreamLength>]` NetworkStream :: The entire network stream. Deserializing the stream is by far the most difficult part of the replay deserialization process, and in order to do it, we actually need to skip past the stream and read the footer first. You can read the bytes, or simply seek past it.
@@ -415,9 +414,9 @@ Now, lets look at each section in detail. Note that these sections should be rea
 
 1. `List[DebugString]` DebugStrings :: Debug information.
 2. `List[TickMark]` TickMarks :: The frames in which a goal was scored or a save was made.
-3. `List[String]` Packages :: Various packages from CookedPCConsole that were used in the game.
-4. `List[String]` Objects :: A list of objects used in the game.
-5. `List[String]` Names :: A list of object names used in the game.
+3. `List[String16]` Packages :: Various packages from CookedPCConsole that were used in the game.
+4. `List[String16]` Objects :: A list of objects used in the game.
+5. `List[String16]` Names :: A list of object names used in the game.
 6. `List[Class]` Classes :: A list of class indicies.
 7. `List[ClassNetCacheEntry]` ClassNetCache :: A list of network attribute encodings.
 
@@ -462,80 +461,28 @@ Here is the example class net cache we will be working with:
 ]
 ```
 
-This is just an example - your class net cache will be much, much larger. Each entry is made up of an `object_id`, which points to that entry's parent class object in the `Objects` list (from the footer). The `cache_id` is a (not-so-) unique id that identifies a given entry for inter-entry relationships. The `parent_id` points to the `cache_id` of its parent class net cache entry. Finally, there are the `properties`, which is a list of `stream_id:object_id` pairs. We will need these in order to know how many bits to read when accumulating attributes for an updated actor, as well as being able to decode the recently read stream ID into the correct object ID, and eventually into the corresponding attribute type. But first, lets make some changes to the class net cache, as in its raw state, it is actually quite condensed and can often contain numerous hierarchical errors.
+This is just an example - your class net cache will be much, much larger. Each entry is made up of an `object_id`, which points to that entry's parent class object in the `Objects` list (from the footer). The `cache_id` is a (not-so-) unique id that identifies a given entry for inter-entry relationships. The `parent_id` points to the `cache_id` of its parent class net cache entry. Finally, there are the `properties`, which is a list of `StreamID:ObjectID` pairs. We will need these in order to know how many bits to read when accumulating attributes for an updated actor, as well as being able to decode the recently read stream ID into the correct object ID, and eventually into the corresponding attribute type. But first, lets make some changes to the class net cache, as in its raw state, it is actually quite condensed and can often contain numerous hierarchical errors.
 
 In order to get our class net cache to a usable state, we need each entry to inherit the properties of its parent entry (which may also have a parent, so this needs to be done iteratively), as well as check for incorrect `parent_id`s along the way. Something very important to note is that the `parent_id` **only** refers to the **closest** entry that appeared **before** the working entry. This is why multiple entries can have the same `cache_id` without causing issues. This process will look something like the following:
 
-For each class net cache entry, check if the object that corresponds to `object_id` is present in the [`Class:ParentClass`](#classparentclass) hash map; if so, then get the new class parent object from the hash, get its object ID (i.e. its index in the `Objects` list), then iterate through the class net cache and find the corresponding entry that has the new object ID, and add its properties to the working entry. This needs to be done iteratively, but because we know each parent entry appears before its child entry, we can simply iterate through our working updated class net cache instead of having to do the same parent:child calculations multiple times. If the entry's `object_id` is *not* in the [`Class:ParentClass`](#classparentclass) hash map, then do the same as before, but use this entry's `parent_id` to find the correct parent entry with a matching `cache_id`, and then inherit that entry's children. Note that these iterations should be done in reverse of the insertion order, since we need the closest (i.e. newest) entry that matches the criteria. In order to increase efficiency, the `properties` lists should also be transformed into hashes of `StreamID:[ObjectID, AttributeType]`, where the `StreamID` is simply the property's `stream_id` value, `ObjectID` is simply the property's `object_id` value, and the `AttributeType` is the property's `object_id` plugged into the [`Object:AttributeType`](#objectattributetype) hash (after being transformed into its corresponding object from the `Objects` list). Note that not all objects will actually correspond to an attribute type.
-
-This part of the preparation can be incredibly confusing, so here is an example Python function that performs the above task on the class net cache as formatted in the example given at the beginning of this section:
-
-```py
-Object_AttributeType_map: dict[str, int] = ...
-Class_ParentClass_map: dict[str, str] = ...
-objects: list[str] = ...
-
-# returns: Hash[ObjectID:Hash[StreamID:AttributeType]]
-def get_attribute_map(class_net_cache: list[dict[str, int | list[dict[str, int]]]]) -> dict[int, dict[int, tuple[int, str]]]:
-    updated_class_net_cache: list[dict[str, int | list[dict[str, int]]]] = list()
-    for working_entry in class_net_cache:
-        # if its the root object, then skip
-        if working_entry["cache_id"] == 0:
-            updated_class_net_cache.append(working_entry)
-            continue
-
-        # working properties list
-        properties: list[dict[str, int]] = working_entry["properties"]
-
-        # if working entry object is in Class_ParentClass_map, then use
-        # the corresponding value to get the parent properties
-        entry_object_name = objects[working_entry["object_id"]]
-        parent_object_name = Class_ParentClass_map.get(entry_object_name, None)
-        if parent_object_name is not None:
-            parent_object_id = objects.index(parent_object_name)
-
-            # iterate through updated entries in reverse order (newest first)
-            for updated_entry in reversed(updated_class_net_cache):
-                if updated_entry["object_id"] == parent_object_id:
-                    properties.extend(updated_entry["properties"])
-                    break # we only want the first occurance
-        
-        # else use the parent_id contained within the working entry
-        else:
-            for updated_entry in reversed(updated_class_net_cache):
-                # parent_id should be stored in a variable in order
-                # to increase efficiency; this is just to better illustrate
-                if updated_entry["cache_id"] == working_entry["parent_id"]:
-                    properties.extend(updated_entry["properties"])
-                    break
-
-        # update the working entry with the new properties, then
-        # add it to our updated class net cache. If you want to preserve
-        # the original class net cache, then you can simply make a copy of
-        # the working entry
-        working_entry["properties"] = properties
-        updated_class_net_cache.append(working_entry)
-
-    # use the updated class net cache to construct our attribute map
-    attribute_map: dict[int, dict[int, int]] = dict()
-    for working_entry in updated_class_net_cache:
-        attributes: dict[int, int] = dict()
-        for prop in working_entry["properties"]:
-            stream_id = prop["stream_id"]
-            object_id = prop["object_id"]
-            object_name = objects[object_id]
-            attribute_type = Object_AttributeType_map.get(object_name, None)
-            attributes[stream_id] = (object_id, attribute_type)
-        attribute_map[working_entry["object_id"]] = attributes
-
-    return attribute_map
-```
+1. Create an empty class net cache for us to add updated entries to.
+2. Iterate through all the class net cache entries.
+3. For each entry in the original class net cache:
+    1. Copy the properties into a new (temporary) list.
+    2. Get the class object name from `Classes` given the entry's `object_id` (i.e. get the `class` from the item in `Classes` whose `index` value corresponds to `object_id`).
+    3. If the class object name is present in the [`Class:ParentClass`](#classparentclass) hash:
+        1. Plug the class object name into the hash map to get the parent class name.
+        2. Get the `ObjectID` of the class object name from `Objects`.
+        3. Iterate over our updated class net cache in reverse order until an entry with an `object_id` that matches the one from `3.3.2` is found. If found, add the entry's properties to our temporary properties list and break from the loop.
+    4. If the class object name is *not* present in the hash, or if no parent entry was found in the iteration process explained in `3.3.3`:
+        1. Iterate over our updated class net cache in reverse order until an entry with a `cache_id` is found that matches the working entry's `parent_id`. If found, add the entry's properties to our temporary properties list and break from the loop.
+    5. Add a copy of the working entry into our updated class net cache, but replace its properties with our temporary properties list.
 
 ## Preparation of Miscellaneous Information
 
 There is also some miscellaneous (and luckily easy to calculate) information that will be useful to have pre-computed before we begin deserializing the network stream:
 
-1. `IS_RL_223`: `true` if the value of the `BuildVersion` header property is >= `221120.42953.406184`, else `false`.
+1. `IS_RL_223`: `true` if the `BuildVersion` property is present in the header properties AND its value >= `221120.42953.406184`, else `false`.
 2. `IS_LAN`: `true` if the value of the `MatchType` header property is `Lan`, else `false`.
 3. `PARSE_ACTOR_NAME_ID`: `true` if (`ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `20`) OR (`ENGINE_VERSION` >= `868` AND `LICENSEE_VERSION` >= `14` AND `IS_LAN` is `false`), else `false`.
 4. `ACTOR_ID_SIZE`: The bit length of the value of the `MaxChannels` header property.
@@ -573,7 +520,7 @@ Deserializing a new actor is pretty simple:
 - **initial_position** :: If the first item in *spawn_trajectory* is `true`, then read `Vector3i`. Else `null`.
 - **initial_rotation** :: If the second item in *spawn_trajectory* is `true`, then read `Rotation`. Else `null`.
 
-That's all the data for a new actor. As mentioned briefly in [`Preparation of Miscellaneous Information`](#preparation-of-miscellaneous-information), we also need to add an entry to the `ACTIVE_ACTORS` hash (given the `actor_id` and **object_id**). Additionally, we should append this actor to the list of new actors in the given frame.
+That's all the data for a new actor. As mentioned briefly in [`Preparation of Miscellaneous Information`](#preparation-of-miscellaneous-information), we also need to add an entry to the `ACTIVE_ACTORS` hash (given the `actor_id` and **object_id**). Additionally, we should append this actor to the list of new actors in the current frame.
 
 ## Deserializing a Deleted Actor
 
@@ -587,16 +534,14 @@ Updating an existing actor is the most difficult of the three operations. Here i
 - *object_name* :: Acquire the object name from the `Objects` list given our *object_id*.
 - *parent_object_name* :: Acquire the parent object's name given *object_name*. The method for achieving this will be explained later in this section.
 - *parent_object_id* :: The index of *parent_object_name* in the `Objects` list.
-- *class_net_cache_entry* :: Find the entry from our updated class net cache given the *parent_object_id*.
+- *class_net_cache_entry* :: Find the entry from our updated class net cache whose `object_id` matches *parent_object_id*.
 - *max_stream_id* :: If the *class_net_cache_entry* has no properties, then this is `3`. Otherwise, get the maximum `stream_id` value from the *class_net_cache_entry*'s properties, then add `1`.
 - *stream_id_size* :: Get the bit length of *max_stream_id*, then subtract `1`.
 - **attributes** :: Now we read the attributes. While the next bit is on (i.e. a loop `while bits[1]`), do the following:
     - **stream_id** :: Read `bmc[C, M]` where `C` is *stream_id_size* and `M` is *max_stream_id*.
     - **object_id** :: Find the property in *class_net_cache_entry*'s properties given **stream_id**, and get the corresponding `object_id`.
     - **attribute_type** :: Get the attribute type from the [`Object:AttributeType`](#objectattributetype) hash given the object name that corresponds to **object_id**.
-        <blockquote>
-        <strong>Note</strong>: In order to increase efficiency, the <strong>object_id</strong> and <strong>attribute_type</strong> should be incorperated directly into the updated class net cache, as detailed in <code><a href="#preparation-of-the-class-net-cache">Preparation of the Class Net Cache</a></code>. Additionally, the <em>max_stream_id</em> and <em>stream_id_size</em> should ideally only be calculated once, most likely during the preprocess where the class net cache is updated.
-        </blockquote>
+        > **Note**: In order to increase efficiency, the **object_id** and **attribute_type** should be incorperated directly into the updated class net cache, as detailed in [`Preparation of the Class Net Cache`](#preparation-of-the-class-net-cache). Additionally, the *max_stream_id* and *stream_id_size* should ideally only be calculated once, most likely during the preprocess where the class net cache is updated.
 
 There is one part of the process that still needs to be covered; that is, a way to find the parent object's name given a child object. This is an incredibly important step, as all of the entries in the class net cache refer to the parent object, while new actors are often created as children of those parent objects. To find the parent object, we can plug the child object's name into the [`Object:Parent`](#objectparent) hash to get the parent object's name. If the object's name is not present in the hash, then we need to do the following:
 
@@ -606,8 +551,9 @@ There is one part of the process that still needs to be covered; that is, a way 
 - If `TheWorld:PersistentLevel.BreakOutActor_Platform_TA` is a substring of the object name, then the parent object is `TheWorld:PersistentLevel.BreakOutActor_Platform_TA`.
 - If `TheWorld:PersistentLevel.InMapScoreboard_TA` is a substring of the object name, then the parent object is `TheWorld:PersistentLevel.InMapScoreboard_TA`.
 - If `TheWorld:PersistentLevel.HauntedBallTrapTrigger_TA` is a substring of the object name, then the parent object is `TheWorld:PersistentLevel.HauntedBallTrapTrigger_TA`.
+- If `:GameReplicationInfoArchetype` is a substring of the object name, then the parent object is `TAGame.GRI_TA`.
 
-This can be pretty taxing, given that there are often 100,000 or more updated actors in a single replay. For this reason, we can significantly improve throughput by dynamically adding a copy of the class net cache entry to the class net cache with the **object_id** of our updated actor as the key, so that next time we can simply pull from the class net cache without having to go through the process of converting object ID to object name, object name to parent object name, and parent object name to parent object id.
+This can be pretty taxing, given that there are often 100,000 or more updated actors in a single replay. For this reason, we can significantly improve throughput by dynamically adding a copy of the updated class net cache entry to the updated class net cache with the **object_id** of our updated actor as the key, so that next time we can simply pull from the class net cache without having to go through the process of converting object ID to object name, object name to parent object name, and parent object name to parent object id.
 
 # Hash Maps
 
@@ -969,12 +915,13 @@ Note: `SpawnTrajectory` is given as [\<has initial location\>, \<has initial rot
     "TAGame.GameEvent_Team_TA": "TAGame.GameEvent_TA",
     "TAGame.GRI_TA": "ProjectX.GRI_X",
     "TAGame.InMapScoreboard_TA": "Engine.Actor",
+    "TAGame.PRI_Breakout_TA": "TAGame.PRI_TA",
     "TAGame.PRI_TA": "ProjectX.PRI_X",
     "TAGame.RBActor_TA": "ProjectX.Pawn_X",
     "TAGame.SpecialPickup_BallCarSpring_TA": "TAGame.SpecialPickup_Spring_TA",
     "TAGame.SpecialPickup_BallFreeze_TA": "TAGame.SpecialPickup_Targeted_TA",
     "TAGame.SpecialPickup_BallGravity_TA": "TAGame.SpecialPickup_TA",
-    "TAGame.SpecialPickup_BallLasso_TA": "TAGame.SpecialPickup_GrapplingHook_TA",
+    "TAGame.SpecialPickup_BallLasso_TA": "TAGame.SpecialPickup_Targeted_TA",
     "TAGame.SpecialPickup_BallVelcro_TA": "TAGame.SpecialPickup_TA",
     "TAGame.SpecialPickup_Batarang_TA": "TAGame.SpecialPickup_BallLasso_TA",
     "TAGame.SpecialPickup_BoostOverride_TA": "TAGame.SpecialPickup_Targeted_TA",
@@ -1046,16 +993,6 @@ Note: `SpawnTrajectory` is given as [\<has initial location\>, \<has initial rot
     "Archetypes.GameEvent.GameEvent_HockeySplitscreen": "TAGame.GameEvent_SoccarSplitscreen_TA",
     "Archetypes.GameEvent.GameEvent_Season": "TAGame.GameEvent_Season_TA",
     "Archetypes.GameEvent.GameEvent_Breakout": "TAGame.GameEvent_Breakout_TA",
-    "GameInfo_Basketball.GameInfo.GameInfo_Basketball:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "Gameinfo_Hockey.GameInfo.Gameinfo_Hockey:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "GameInfo_Season.GameInfo.GameInfo_Season:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "GameInfo_Soccar.GameInfo.GameInfo_Soccar:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "GameInfo_Items.GameInfo.GameInfo_Items:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "GameInfo_Breakout.GameInfo.GameInfo_Breakout:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "gameinfo_godball.GameInfo.gameinfo_godball:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "GameInfo_GodBall.GameInfo.GameInfo_GodBall:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "GameInfo_FootBall.GameInfo.GameInfo_FootBall:GameReplicationInfoArchetype": "TAGame.GRI_TA",
-    "GameInfo_FTE.GameInfo.GameInfo_FTE:GameReplicationInfoArchetype": "TAGame.GRI_TA",
     "ProjectX.Default__NetModeReplicator_X": "ProjectX.NetModeReplicator_X",
     "TAGame.Default__CameraSettingsActor_TA": "TAGame.CameraSettingsActor_TA",
     "Archetypes.SpecialPickups.SpecialPickup_GravityWell": "TAGame.SpecialPickup_BallGravity_TA",
@@ -1070,9 +1007,6 @@ Note: `SpawnTrajectory` is given as [\<has initial location\>, \<has initial rot
     "Archetypes.SpecialPickups.SpecialPickup_BallSpring": "TAGame.SpecialPickup_BallCarSpring_TA",
     "Archetypes.SpecialPickups.SpecialPickup_StrongHit": "TAGame.SpecialPickup_HitForce_TA",
     "Archetypes.SpecialPickups.SpecialPickup_Batarang": "TAGame.SpecialPickup_Batarang_TA",
-    "Neotokyo_p.TheWorld:PersistentLevel.InMapScoreboard_TA_1": "TAGame.InMapScoreboard_TA",
-    "Haunted_TrainStation_P.TheWorld:PersistentLevel.HauntedBallTrapTrigger_TA_1": "TAGame.HauntedBallTrapTrigger_TA",
-    "Haunted_TrainStation_P.TheWorld:PersistentLevel.HauntedBallTrapTrigger_TA_0": "TAGame.HauntedBallTrapTrigger_TA",
     "Archetypes.SpecialPickups.SpecialPickup_HauntedBallBeam": "TAGame.SpecialPickup_HauntedBallBeam_TA",
     "Archetypes.SpecialPickups.SpecialPickup_Rugby": "TAGame.SpecialPickup_Rugby_TA",
     "gameinfo_godball.GameInfo.gameinfo_godball:Archetype": "TAGame.GameEvent_GodBall_TA",
@@ -1084,6 +1018,9 @@ Note: `SpawnTrajectory` is given as [\<has initial location\>, \<has initial rot
     "TAGame.Default__PickupTimer_TA": "TAGame.PickupTimer_TA",
     "TAGame.Default__PRI_Breakout_TA": "TAGame.PRI_Breakout_TA",
     "Archetypes.GameEvent.GameEvent_FTE_Part1_Prime": "TAGame.GameEvent_FTE_TA",
+    "GameInfo_Tutorial.GameEvent.GameEvent_Tutorial_Aerial": "TAGame.GameEvent_Training_Aerial_TA",
+    "Archetypes.Ball.Ball_Training": "TAGame.Ball_Tutorial_TA",
+    "Archetypes.Tutorial.Cannon": "TAGame.Cannon_TA",
 }
 ```
 
