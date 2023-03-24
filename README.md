@@ -55,7 +55,7 @@ Reading a byte from the buffer simply requires reading 8 bits. Reading multiple 
 
 Below is some shorthand for certain data types and data structures that are used numerous times throughout the replay deserialization process.
 
-Something you will see a few times are mentions of `ENGINE_VERSION`, `LICENSEE_VERSION`, `NET_VERSION`, and `IS_RL_223`. These are values in the header (or derived from the header, in the case of `IS_RL_223`) that in some cases determine the method of deserialization for certain types/structures. How `IS_RL_223` is calculated will be covered in [Preparation of Miscellaneous Information](#preparation-of-miscellaneous-information).
+Something you will see a few times are mentions of `ENGINE_VERSION`, `LICENSEE_VERSION`, `NET_VERSION`, and `IS_RL_223`. These are values in the header (or derived from the header, in the case of `IS_RL_223`) that in some cases determine the method of deserialization for certain types/structures. `ENGINE_VERSION`, `LICENSEE_VERSION`, and `NET_VERSION` are covered in [`Deserializing the Header`](#deserializing-the-header). How `IS_RL_223` is calculated is in [Preparation of Miscellaneous Information](#preparation-of-miscellaneous-information).
 
 ## Core Types
 
