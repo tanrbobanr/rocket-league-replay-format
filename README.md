@@ -1055,3 +1055,5 @@ I would like to thank [Nick Babcock](https://github.com/nickbabcock) for their d
 The [`Object:SpawnTrajectory`](#objectspawntrajectory), [`Object:AttributeType`](#objectattributetype), and [`Class:ParentClass`](#classparentclass) hash maps came from [boxcars](https://github.com/nickbabcock/boxcars), specifically the [data file](https://github.com/nickbabcock/boxcars/blob/master/src/data.rs). The [`Class:ParentClass`](#classparentclass) hash map is slightly modified.
 
 The [`Object:Parent`](#objectparent) hash map is a slightly modified version of [this portion of the `ActorState` file](https://github.com/jjbott/RocketLeagueReplayParser/blob/9daa4e0491b3a48c9267eeeb93d065ae1b0f35a9/RocketLeagueReplayParser/NetworkStream/ActorState.cs#L46-L183) from [RocketLeagueReplayParser](https://github.com/jjbott/RocketLeagueReplayParser).
+
+The `1023` default `MaxChannels` header property value is taken from [rattletrap](https://github.com/tfausak/rattletrap).
