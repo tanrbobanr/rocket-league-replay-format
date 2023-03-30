@@ -1,3 +1,6 @@
+> **Warning** Some information is missing from this documentation, and some of the information that *is* here may be slightly incorrect. This is a work-in-progress.
+
+
 # Introduction
 
 This documentation covers how to deserialize a replay file into readible data. It does *not* cover how to interpret that data. The below information is valid as of Rocket League version `2.23`.
